@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEditor;
@@ -61,15 +62,31 @@ namespace ParrelSync
         }
         public List<string> GetStoredValue()
         {
-            return this.Deserialize(EditorPrefs.GetString(Key));
+            var path = Path.Combine(Application.dataPath, Key);
+            if (File.Exists(path))
+            {
+                string serializedData = File.ReadAllText(path);
+                return this.Deserialize(serializedData);
+            }
+            else
+            {
+                return new List<string>();
+            }
         }
+        
         public void SetStoredValue(List<string> strings)
         {
-            EditorPrefs.SetString(Key, this.Serialize(strings));
+            var path = Path.Combine(Application.dataPath, Key);
+            File.WriteAllText(path, this.Serialize(strings));
         }
+
         public void ClearStoredValue()
         {
-            EditorPrefs.DeleteKey(Key);
+            var path = Path.Combine(Application.dataPath, Key);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
         }
         public string Serialize(List<string> data)
         {
@@ -118,7 +135,7 @@ namespace ParrelSync
         /// useful for data that lives outside of the assets folder
         /// eg. Wwise project data
         /// </summary>
-        public static ListOfStringsPreference OptionalSymbolicLinkFolders = new ListOfStringsPreference("ParrelSync_OptionalSymbolicLinkFolders");
+        public static ListOfStringsPreference OptionalSymbolicLinkFolders = new ListOfStringsPreference("ParrelSync_Symbolic.txt");
         
         private void OnGUI()
         {
@@ -162,7 +179,11 @@ namespace ParrelSync
             bool optionalFolderPathsAreDirty = false;
             
             // append a new row if full
-            if (optionalFolderPaths.Last() != "")
+            if (optionalFolderPaths.Count == 0)
+            {
+                optionalFolderPaths.Add("");
+            }
+            else if (optionalFolderPaths.Count > 0 && optionalFolderPaths.Last() != "")
             {
                 optionalFolderPaths.Add("");
             }
@@ -194,7 +215,7 @@ namespace ParrelSync
             }
 
             // only set the preference if the value is marked dirty
-            if (optionalFolderPathsAreDirty)
+            if (GUILayout.Button("Save list") || optionalFolderPathsAreDirty)
             {
                 optionalFolderPaths.RemoveAll(str=> str == "");
                 OptionalSymbolicLinkFolders.SetStoredValue(optionalFolderPaths);
